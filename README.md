@@ -14,6 +14,8 @@ WSJT-X / JTDX から送信される ADIF データを [HAMLAB](https://hamlab.jp
 ## 必要なもの
 
 - HAMLAB Bridge サーバー（`ws://127.0.0.1:17800/ws` で待ち受け）
+  - [udp-bridge](https://github.com/itcom/udp-bridge) - WSJT-X/JTDX からの UDP パケットを受信し、WebSocket で配信するサーバー
+  - CAT/CI-V 連携にも対応（無線機の周波数・モード取得）
 - Chrome / Edge などの Chromium 系ブラウザ
 
 ## インストール
