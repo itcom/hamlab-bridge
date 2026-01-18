@@ -53,7 +53,7 @@ type BridgeMessage =
         states: Record<string, {
             data: boolean
             freq: number
-            index: number
+            port: number
             mode: string
             proto: string
         }>
@@ -312,10 +312,10 @@ function createToolbar() {
     toolbar.id = "hamlab-bridge-toolbar"
     toolbar.style.cssText = `
         position: fixed;
-        top: 10px;
-        right: 10px;
+        top: 1px;
+        left: 1px;
         z-index: 10000;
-        background: #fff;
+        background: rgb(255, 255, 255, 0.2);
         border: 1px solid #ccc;
         border-radius: 4px;
         padding: 8px;
@@ -330,7 +330,7 @@ function createToolbar() {
         isCollapsed = !isCollapsed
         if (isCollapsed) {
             content.style.display = "none"
-            toggleBtn.textContent = "◀"
+            toggleBtn.textContent = "▶"
             // IFRAMEも隠す
             const iframe = document.getElementById("hamlab-bridge-udp-iframe")
             if (iframe) {
@@ -338,7 +338,7 @@ function createToolbar() {
             }
         } else {
             content.style.display = "flex"
-            toggleBtn.textContent = "▶"
+            toggleBtn.textContent = "◀"
             // IFRAMEがあれば再表示
             const iframe = document.getElementById("hamlab-bridge-udp-iframe")
             if (iframe) {
@@ -409,9 +409,12 @@ function createButton(text: string, height: string, onClick: () => void): HTMLBu
         padding: 6px 12px;
         border: 1px solid #ccc;
         border-radius: 3px;
-        background: #f8f8f8;
+        background: rgb(248, 248, 248,0.5);
         cursor: pointer;
         font-size: 12px;
+        color: #000;
+        font-weight: bold;
+        text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 2px #fff;
     `
     if (height) {
         btn.style.height = height
@@ -423,16 +426,20 @@ function createButton(text: string, height: string, onClick: () => void): HTMLBu
             return
         }
         btn.style.background = "#e8e8e8"
+        btn.style.color = "#000"
+        btn.style.textShadow = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 2px #fff"
     })
     btn.addEventListener("mouseout", () => {
         const rigPort = parseInt(btn.dataset.rigPort || "-1", 10)
         if (rigPort >= 0 && rigPort === currentSelectedPort) {
-            btn.style.background = "#4a90d9"
+            btn.style.background = "rgb(100 180 255)"
             btn.style.color = "#fff"
-            btn.style.borderColor = "#3a7bc8"
+            btn.style.borderColor = "rgb(180 210 255)"
+            btn.style.textShadow = "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px #000"
         } else {
-            btn.style.background = "#f8f8f8"
+            btn.style.background = "rgb(248, 248, 248,0.5)"
             btn.style.color = "#000"
+            btn.style.textShadow = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 2px #fff"
         }
     })
     return btn
@@ -450,10 +457,10 @@ function toggleUdpBridgeIframe() {
     iframe.src = "http://127.0.0.1:17801/settings" // UDP BridgeのデフォルトURL
     iframe.style.cssText = `
         position: fixed;
-        top: 84px;
-        right: 10px;
-        width: 400px;
-        height: 500px;
+        top: 120px;
+        right: 1px;
+        width: 500px;
+        height: 70%;
         border: 1px solid #ccc;
         border-radius: 4px;
         z-index: 9999;
@@ -496,15 +503,19 @@ async function updateRigButtons(states: Record<string, {
         })
         rigBtn.style.fontSize = "11px"
         rigBtn.style.padding = "3px 6px"
-        rigBtn.style.fontWeight = "normal"
+        rigBtn.style.fontWeight = "bold"
         rigBtn.dataset.rigPort = port.toString() // ポート番号をdata属性に保存
         
         // 現在選択中のポートなら色を変える
         if (currentSelectedPort === port) {
-            rigBtn.style.background = "#4a90d9"
+            rigBtn.style.background = "rgb(100 180 255)"
             rigBtn.style.color = "#fff"
             rigBtn.style.fontWeight = "bold"
-            rigBtn.style.borderColor = "#3a7bc8"
+            rigBtn.style.borderColor = "rgb(180 210 255)"
+            rigBtn.style.textShadow = "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px #000"
+        } else {
+            // 非選択状態でもtext-shadowを設定
+            rigBtn.style.textShadow = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 2px #fff"
         }
         
         rigContainer.appendChild(rigBtn)
@@ -521,16 +532,18 @@ function updateRigButtonColors() {
         const rigPort = parseInt(btn.dataset.rigPort || "-1", 10)
         if (rigPort === currentSelectedPort) {
             // 選択中のボタン
-            btn.style.background = "#4a90d9"
+            btn.style.background = "rgb(100 180 255)"
             btn.style.color = "#fff"
             btn.style.fontWeight = "bold"
-            btn.style.borderColor = "#3a7bc8"
+            btn.style.borderColor = "rgb(180 210 255)"
+            btn.style.textShadow = "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px #000"
         } else {
             // 非選択のボタン
-            btn.style.background = "#f8f8f8"
+            btn.style.background = "rgb(248, 248, 248,0.5)"
             btn.style.color = "#000"
-            btn.style.fontWeight = "normal"
+            btn.style.fontWeight = "bold"
             btn.style.borderColor = "#ccc"
+            btn.style.textShadow = "-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 2px #fff"
         }
     })
 }
