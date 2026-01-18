@@ -66,17 +66,29 @@ const styles = {
 
 export default function Options() {
     const [showConfirm, setShowConfirm] = useState(true)
+    const [autoRigUpdate, setAutoRigUpdate] = useState(true)
     const [remarks1Text, setRemarks1Text] = useState("")
     const [rigName, setRigName] = useState("")
     const [antName, setAntName] = useState("")
     const [antHeight, setAntHeight] = useState("")
+    const [rig1Name, setRig1Name] = useState("")
+    const [rig2Name, setRig2Name] = useState("")
+    const [rig3Name, setRig3Name] = useState("")
+    const [rig4Name, setRig4Name] = useState("")
+    const [rig5Name, setRig5Name] = useState("")
 
     useEffect(() => {
         storage.get<boolean>("showConfirm").then((v) => setShowConfirm(v ?? true))
+        storage.get<boolean>("autoRigUpdate").then((v) => setAutoRigUpdate(v ?? true))
         storage.get<string>("remarks1Text").then((v) => setRemarks1Text(v ?? ""))
         storage.get<string>("rigName").then((v) => setRigName(v ?? ""))
         storage.get<string>("antName").then((v) => setAntName(v ?? ""))
         storage.get<string>("antHeight").then((v) => setAntHeight(v ?? ""))
+        storage.get<string>("rig1Name").then((v) => setRig1Name(v ?? ""))
+        storage.get<string>("rig2Name").then((v) => setRig2Name(v ?? ""))
+        storage.get<string>("rig3Name").then((v) => setRig3Name(v ?? ""))
+        storage.get<string>("rig4Name").then((v) => setRig4Name(v ?? ""))
+        storage.get<string>("rig5Name").then((v) => setRig5Name(v ?? ""))
     }, [])
 
     return (
@@ -96,6 +108,18 @@ export default function Options() {
                         }}
                     />
                     登録前に確認ダイアログを表示する
+                </label>
+                <label style={{ ...styles.checkboxLabel, marginTop: 8 }}>
+                    <input
+                        type="checkbox"
+                        style={styles.checkbox}
+                        checked={autoRigUpdate}
+                        onChange={(e) => {
+                            setAutoRigUpdate(e.target.checked)
+                            storage.set("autoRigUpdate", e.target.checked)
+                        }}
+                    />
+                    リグの状態変化を自動的にフォームに反映する
                 </label>
             </div>
 
@@ -155,6 +179,75 @@ export default function Options() {
                             storage.set("antHeight", e.target.value)
                         }}
                         placeholder="例: 10"
+                    />
+                </div>
+            </div>
+
+            <div style={styles.card}>
+                <div style={styles.cardTitle}>リグボタン表示名</div>
+                <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Rig 1</label>
+                    <input
+                        type="text"
+                        style={styles.input}
+                        value={rig1Name}
+                        onChange={(e) => {
+                            setRig1Name(e.target.value)
+                            storage.set("rig1Name", e.target.value)
+                        }}
+                        placeholder="例: IC-7300"
+                    />
+                </div>
+                <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Rig 2</label>
+                    <input
+                        type="text"
+                        style={styles.input}
+                        value={rig2Name}
+                        onChange={(e) => {
+                            setRig2Name(e.target.value)
+                            storage.set("rig2Name", e.target.value)
+                        }}
+                        placeholder="例: FT-991A"
+                    />
+                </div>
+                <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Rig 3</label>
+                    <input
+                        type="text"
+                        style={styles.input}
+                        value={rig3Name}
+                        onChange={(e) => {
+                            setRig3Name(e.target.value)
+                            storage.set("rig3Name", e.target.value)
+                        }}
+                        placeholder="例: TS-590SG"
+                    />
+                </div>
+                <div style={styles.fieldGroup}>
+                    <label style={styles.label}>Rig 4</label>
+                    <input
+                        type="text"
+                        style={styles.input}
+                        value={rig4Name}
+                        onChange={(e) => {
+                            setRig4Name(e.target.value)
+                            storage.set("rig4Name", e.target.value)
+                        }}
+                        placeholder="例: IC-705"
+                    />
+                </div>
+                <div style={{ ...styles.fieldGroup, marginBottom: 0 }}>
+                    <label style={styles.label}>Rig 5</label>
+                    <input
+                        type="text"
+                        style={styles.input}
+                        value={rig5Name}
+                        onChange={(e) => {
+                            setRig5Name(e.target.value)
+                            storage.set("rig5Name", e.target.value)
+                        }}
+                        placeholder="例: FT-817"
                     />
                 </div>
             </div>

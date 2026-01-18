@@ -3,9 +3,19 @@ import type { PlasmoCSConfig } from "plasmo"
 
 const storage = new Storage()
 
+// 現在選択されているポート番号（0-4）
+let currentSelectedPort: number | null = null
+
 export const config: PlasmoCSConfig = {
     matches: ["https://hamlab.jp/*"]
 }
+
+// ページ読み込み時にUIを追加
+window.addEventListener("load", () => {
+    createToolbar()
+    // 接続されているリグ数を取得
+    chrome.runtime.sendMessage({ type: "getRigState" })
+})
 
 /**
  * background.ts から受信するメッセージの想定型
@@ -30,20 +40,68 @@ type BridgeMessage =
         freq: number
         mode: string
         rig: string
+        port: number
+    }
+    | {
+        type: "rigState"
+        port: number
+        freq: number
+        mode: string
+    }
+    | {
+        type: "rigStates"
+        states: Record<string, {
+            data: boolean
+            freq: number
+            index: number
+            mode: string
+            proto: string
+        }>
     }
 
 chrome.runtime.onMessage.addListener((msg: BridgeMessage) => {
 
-    // rigタイプのメッセージ処理
-    if (typeof msg !== "string" && msg.type === "rig") {
-        // Hz → MHz変換
+    // rigStatesタイプのメッセージ処理（接続されているリグ情報を取得）
+    if (typeof msg !== "string" && msg.type === "rigStates") {
+        // states全体を渡す
+        updateRigButtons(msg.states)
+        return
+    }
+
+    // rigStateタイプのメッセージ処理（リグ選択ボタンからの応答）
+    if (typeof msg !== "string" && msg.type === "rigState") {
+        // 選択されたポートを記録
+        currentSelectedPort = msg.port
+        updateRigButtonColors()
+        
         const freqMHz = (msg.freq / 1000000).toFixed(3)
         set("#frequency", freqMHz)
-        // モード変換
         const mappedMode = mapMode(msg.mode)
         if (mappedMode) {
             set("#mode", mappedMode)
         }
+        return
+    }
+
+    // rigタイプのメッセージ処理（ブロードキャスト）
+    if (typeof msg !== "string" && msg.type === "rig") {
+        // portから選択状態を更新
+        currentSelectedPort = msg.port
+        updateRigButtonColors()
+        
+        // 自動反映設定をチェック
+        storage.get<boolean>("autoRigUpdate").then((enabled) => {
+            if (enabled === false) return // 無効の場合は何もしない
+            
+            // Hz → MHz変換
+            const freqMHz = (msg.freq / 1000000).toFixed(3)
+            set("#frequency", freqMHz)
+            // モード変換
+            const mappedMode = mapMode(msg.mode)
+            if (mappedMode) {
+                set("#mode", mappedMode)
+            }
+        })
         return
     }
 
@@ -236,5 +294,250 @@ function showConfirmDialog(
     })
     box.querySelector<HTMLButtonElement>("#ng")?.addEventListener("click", () => {
         box.remove()
+    })
+}
+
+/* -------------------------
+ * Toolbar UI
+ * ------------------------- */
+
+function createToolbar() {
+    // URLに応じて初期状態を設定
+    // /admin/index.php で、かつ #anc_1 ではない場合のみ展開
+    const isAdminPage = window.location.pathname.includes("/admin/index.php") 
+                        && window.location.hash !== "#anc_1"
+    let isCollapsed = !isAdminPage
+
+    const toolbar = document.createElement("div")
+    toolbar.id = "hamlab-bridge-toolbar"
+    toolbar.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 10000;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    `
+
+    // 折りたたみボタン
+    const toggleBtn = createButton(isCollapsed ? "◀" : "▶", "50px", () => {
+        isCollapsed = !isCollapsed
+        if (isCollapsed) {
+            content.style.display = "none"
+            toggleBtn.textContent = "◀"
+            // IFRAMEも隠す
+            const iframe = document.getElementById("hamlab-bridge-udp-iframe")
+            if (iframe) {
+                iframe.style.display = "none"
+            }
+        } else {
+            content.style.display = "flex"
+            toggleBtn.textContent = "▶"
+            // IFRAMEがあれば再表示
+            const iframe = document.getElementById("hamlab-bridge-udp-iframe")
+            if (iframe) {
+                iframe.style.display = "block"
+            }
+        }
+    })
+    toggleBtn.style.padding = "3px 6px"
+    toggleBtn.style.fontSize = "10px"
+
+    // コンテンツコンテナ
+    const content = document.createElement("div")
+    content.style.cssText = `
+        display: ${isCollapsed ? "none" : "flex"};
+        gap: 8px;
+        align-items: center;
+        flex: 1;
+    `
+
+    // リグ選択ボタンコンテナ（左側）
+    const rigContainer = document.createElement("div")
+    rigContainer.id = "hamlab-bridge-rig-container"
+    rigContainer.style.cssText = `
+        display: flex;
+        gap: 4px;
+        flex: 1;
+    `
+
+    // 設定ボタンコンテナ（右側、2段）
+    const settingsContainer = document.createElement("div")
+    settingsContainer.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    `
+
+    // 設定ボタン
+    const settingsBtn = createButton("⚙️", "", () => {
+        chrome.runtime.sendMessage({ type: "openOptions" })
+    })
+    settingsBtn.title = "設定"
+    settingsBtn.style.fontSize = "10px"
+    settingsBtn.style.padding = "3px 6px"
+
+    // UDP Bridge設定ボタン
+    const udpBridgeBtn = createButton("🌐", "", () => {
+        toggleUdpBridgeIframe()
+    })
+    udpBridgeBtn.title = "UDP Bridge"
+    udpBridgeBtn.style.fontSize = "10px"
+    udpBridgeBtn.style.padding = "3px 6px"
+
+    settingsContainer.appendChild(settingsBtn)
+    settingsContainer.appendChild(udpBridgeBtn)
+
+    content.appendChild(rigContainer)
+    content.appendChild(settingsContainer)
+
+    toolbar.appendChild(toggleBtn)
+    toolbar.appendChild(content)
+    document.body.appendChild(toolbar)
+}
+
+function createButton(text: string, height: string, onClick: () => void): HTMLButtonElement {
+    const btn = document.createElement("button")
+    btn.textContent = text
+    btn.style.cssText = `
+        padding: 6px 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: #f8f8f8;
+        cursor: pointer;
+        font-size: 12px;
+    `
+    if (height) {
+        btn.style.height = height
+    }
+    btn.addEventListener("click", onClick)
+    btn.addEventListener("mouseover", () => {
+        const rigPort = parseInt(btn.dataset.rigPort || "-1", 10)
+        if (rigPort >= 0 && rigPort === currentSelectedPort) {
+            return
+        }
+        btn.style.background = "#e8e8e8"
+    })
+    btn.addEventListener("mouseout", () => {
+        const rigPort = parseInt(btn.dataset.rigPort || "-1", 10)
+        if (rigPort >= 0 && rigPort === currentSelectedPort) {
+            btn.style.background = "#4a90d9"
+            btn.style.color = "#fff"
+            btn.style.borderColor = "#3a7bc8"
+        } else {
+            btn.style.background = "#f8f8f8"
+            btn.style.color = "#000"
+        }
+    })
+    return btn
+}
+
+function toggleUdpBridgeIframe() {
+    let iframe = document.getElementById("hamlab-bridge-udp-iframe") as HTMLIFrameElement
+    if (iframe) {
+        iframe.remove()
+        return
+    }
+
+    iframe = document.createElement("iframe")
+    iframe.id = "hamlab-bridge-udp-iframe"
+    iframe.src = "http://127.0.0.1:17801/settings" // UDP BridgeのデフォルトURL
+    iframe.style.cssText = `
+        position: fixed;
+        top: 84px;
+        right: 10px;
+        width: 400px;
+        height: 500px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        z-index: 9999;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    `
+    document.body.appendChild(iframe)
+}
+
+async function updateRigButtons(states: Record<string, {
+    data: boolean
+    freq: number
+    port: number
+    mode: string
+    proto: string
+}>) {
+    const rigContainer = document.getElementById("hamlab-bridge-rig-container")
+    if (!rigContainer) return
+
+    // 既存のボタンをクリア
+    rigContainer.innerHTML = ""
+
+    // 設定から各リグの名前を読み込む
+    const rigNames = await Promise.all([
+        storage.get<string>("rig1Name"),
+        storage.get<string>("rig2Name"),
+        storage.get<string>("rig3Name"),
+        storage.get<string>("rig4Name"),
+        storage.get<string>("rig5Name")
+    ])
+
+    // statesから実際に接続されているポートを取得してボタンを作成
+    for (const [key, state] of Object.entries(states)) {
+        const port = state.port
+        const customName = rigNames[port]
+        const label = customName || `Rig ${port + 1}`
+        
+        const rigBtn = createButton(label, "50px", () => {
+            selectRig(port)
+        })
+        rigBtn.style.fontSize = "11px"
+        rigBtn.style.padding = "3px 6px"
+        rigBtn.style.fontWeight = "normal"
+        rigBtn.dataset.rigPort = port.toString() // ポート番号をdata属性に保存
+        
+        // 現在選択中のポートなら色を変える
+        if (currentSelectedPort === port) {
+            rigBtn.style.background = "#4a90d9"
+            rigBtn.style.color = "#fff"
+            rigBtn.style.fontWeight = "bold"
+            rigBtn.style.borderColor = "#3a7bc8"
+        }
+        
+        rigContainer.appendChild(rigBtn)
+    }
+}
+
+function updateRigButtonColors() {
+    const rigContainer = document.getElementById("hamlab-bridge-rig-container")
+    if (!rigContainer) return
+
+    // すべてのリグボタンを取得して色を更新
+    const buttons = rigContainer.querySelectorAll<HTMLButtonElement>("button")
+    buttons.forEach((btn) => {
+        const rigPort = parseInt(btn.dataset.rigPort || "-1", 10)
+        if (rigPort === currentSelectedPort) {
+            // 選択中のボタン
+            btn.style.background = "#4a90d9"
+            btn.style.color = "#fff"
+            btn.style.fontWeight = "bold"
+            btn.style.borderColor = "#3a7bc8"
+        } else {
+            // 非選択のボタン
+            btn.style.background = "#f8f8f8"
+            btn.style.color = "#000"
+            btn.style.fontWeight = "normal"
+            btn.style.borderColor = "#ccc"
+        }
+    })
+}
+
+function selectRig(port: number) {
+    chrome.runtime.sendMessage({
+        type: "getRigState",
+        port: port
     })
 }

@@ -36,3 +36,16 @@ function connect() {
 }
 
 connect()
+
+// Content script からのメッセージを受信
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message.type === "openOptions") {
+        chrome.runtime.openOptionsPage()
+    } else if (message.type === "getRigState" && ws && ws.readyState === WebSocket.OPEN) {
+        // リグ情報取得リクエスト
+        const request = message.port !== undefined 
+            ? { type: "getRigState", port: message.port }
+            : { type: "getRigState" }
+        ws.send(JSON.stringify(request))
+    }
+})
