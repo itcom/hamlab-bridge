@@ -2,6 +2,8 @@
 
 WSJT-X / JTDX から送信される ADIF データを [HAMLAB](https://hamlab.jp/) に自動入力するブラウザ拡張機能です。
 
+![HAMLAB Bridge](assets/screenshot.png)
+
 ## 機能
 
 - ローカルの HAMLAB Bridge サーバーから WebSocket 経由で ADIF を受信
